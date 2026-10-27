@@ -1,0 +1,326 @@
+:root {
+  --page: #cdd5d1;
+  --shell: #26353b;
+  --shell-edge: #1b272c;
+  --shell-label: #9fb3ba;
+  --lcd: #cfe0c3;
+  --lcd-ink: #1e2b22;
+  --lcd-error: #8a1c12;
+  --key: #f4f5f1;
+  --key-ink: #26353b;
+  --key-operator: #8fa9b6;
+  --key-function: #3f525a;
+  --key-function-ink: #e3eae6;
+  --key-equals: #e5a82e;
+  --paper: #fbfbf7;
+  --print: #34408c;
+  --print-error: #b42318;
+  --focus: #e5a82e;
+
+  --font-ui: 'Instrument Sans Variable', system-ui, sans-serif;
+  --font-print: 'Martian Mono Variable', ui-monospace, monospace;
+
+  font-family: var(--font-ui);
+  color: var(--key-ink);
+  background: var(--page);
+  -webkit-font-smoothing: antialiased;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Layout: the machine with its paper tape alongside. */
+
+.workspace {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 22.5rem) minmax(0, 18rem);
+  justify-content: center;
+  align-items: stretch;
+  align-content: center;
+  gap: 1.5rem;
+  padding: 2rem 1rem;
+}
+
+.machine {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem 1.25rem 1.5rem;
+  background: var(--shell);
+  border-radius: 1.5rem;
+  box-shadow:
+    inset 0 -6px 0 var(--shell-edge),
+    0 18px 40px -18px rgb(27 39 44 / 0.55);
+}
+
+.machine__name {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--shell-label);
+}
+
+/* Display */
+
+.display {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.875rem 1rem 0.625rem;
+  min-height: 8.5rem;
+  background: var(--lcd);
+  color: var(--lcd-ink);
+  border-radius: 0.5rem;
+  box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.25);
+  font-family: var(--font-print);
+  text-align: right;
+}
+
+.display__expression {
+  margin: 0;
+  min-height: 1.25rem;
+  font-size: 0.8125rem;
+  opacity: 0.7;
+  overflow-wrap: anywhere;
+}
+
+.display__entry {
+  display: block;
+  line-height: 1.1;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.display__entry--large {
+  font-size: 2.75rem;
+}
+
+.display__entry--medium {
+  font-size: 2rem;
+}
+
+.display__entry--small {
+  font-size: 1.5rem;
+}
+
+.display__message {
+  margin: 0;
+  min-height: 1.125rem;
+  font-size: 0.75rem;
+  color: var(--lcd-error);
+}
+
+.display[aria-busy='true'] .display__message {
+  color: var(--lcd-ink);
+}
+
+/* Keypad */
+
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 3.5rem;
+  gap: 0.625rem;
+}
+
+.key {
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 0.75rem;
+  font-size: 1.375rem;
+  font-weight: 500;
+  color: var(--key-ink);
+  background: var(--key);
+  box-shadow: inset 0 -4px 0 rgb(0 0 0 / 0.14);
+  transition:
+    transform 60ms ease-out,
+    box-shadow 60ms ease-out;
+  touch-action: manipulation;
+}
+
+.key:active {
+  transform: translateY(2px);
+  box-shadow: inset 0 -2px 0 rgb(0 0 0 / 0.14);
+}
+
+.key--operator {
+  background: var(--key-operator);
+  font-size: 1.625rem;
+}
+
+.key--function {
+  background: var(--key-function);
+  color: var(--key-function-ink);
+  font-size: 1.125rem;
+}
+
+.key--clear {
+  color: var(--print-error);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.key--equals {
+  background: var(--key-equals);
+  font-size: 1.75rem;
+}
+
+.key--wide {
+  grid-column: span 2;
+  justify-items: start;
+  padding-left: 1.5rem;
+}
+
+.key--tall {
+  grid-row: span 2;
+}
+
+/* Paper tape */
+
+.tape {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tape__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 0.25rem 0.5rem;
+}
+
+.tape__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.tape__clear {
+  padding: 0.25rem 0.5rem;
+  border: 0;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: var(--key-ink);
+  font-size: 0.8125rem;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.tape__clear:disabled {
+  cursor: default;
+  opacity: 0.45;
+  text-decoration: none;
+}
+
+.tape__paper {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1.5rem 1.25rem 1.25rem;
+  background: var(--paper);
+  color: var(--print);
+  font-family: var(--font-print);
+  font-size: 0.8125rem;
+  /* Torn top edge where the strip was ripped off the roll. */
+  --tear: 7px;
+  mask:
+    conic-gradient(from -45deg at bottom, #000 90deg, #0000 0) top / calc(2 * var(--tear)) var(--tear) repeat-x,
+    linear-gradient(#000 0 0) 0 calc(var(--tear) - 1px) / 100% 100% no-repeat;
+  box-shadow: 0 10px 24px -16px rgb(27 39 44 / 0.5);
+}
+
+.tape__empty {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #5b6b70;
+}
+
+.tape__lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tape__line {
+  display: grid;
+  gap: 0.125rem;
+  padding-bottom: 0.875rem;
+  border-bottom: 1px dashed rgb(52 64 140 / 0.25);
+  overflow-wrap: anywhere;
+}
+
+.tape__result {
+  justify-self: end;
+  text-align: right;
+  font-weight: 600;
+}
+
+.tape__line--error {
+  color: var(--print-error);
+}
+
+.tape__line--error .tape__result {
+  font-weight: 400;
+}
+
+.tape__line:last-child {
+  animation: print 180ms ease-out;
+}
+
+@keyframes print {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+
+@media (max-width: 47.5rem) {
+  .workspace {
+    grid-template-columns: minmax(0, 26rem);
+    align-content: start;
+    padding: 1rem 0.75rem 1.5rem;
+    gap: 1.25rem;
+  }
+
+  .keypad {
+    grid-auto-rows: clamp(3.25rem, 9dvh, 4rem);
+  }
+
+  .tape__paper {
+    max-height: 16rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .key,
+  .tape__line:last-child {
+    transition: none;
+    animation: none;
+  }
+}
