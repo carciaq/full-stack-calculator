@@ -144,6 +144,18 @@ describe('evaluation results', () => {
     expect(planEquals(state)).toEqual({ operation: 'add', operands: [9, 4], continueWith: null });
   });
 
+  it('an operator after a unary result chains instead of replacing the pending operator', () => {
+    const inProgress = run([...type('9'), { type: 'operator', operation: 'add' }, ...type('16')]);
+    const state = run(succeed(planUnary(inProgress, 'sqrt'), 4), inProgress);
+    expect(planOperator(state, 'multiply')).toEqual({ operation: 'add', operands: [9, 4], continueWith: 'multiply' });
+  });
+
+  it('an operator after a chained result replaces the carried operator', () => {
+    const state = run(succeed({ operation: 'add', operands: [2, 3], continueWith: 'multiply' }, 5));
+    expect(planOperator(state, 'divide')).toBeNull();
+    expect(run([{ type: 'operator', operation: 'divide' }], state)).toMatchObject({ accumulator: 5, pendingOperation: 'divide' });
+  });
+
   it('a failure keeps the operation so the second number can be corrected', () => {
     const divide: EvaluationRequest = { operation: 'divide', operands: [8, 0], continueWith: null };
     const failed = run(
@@ -163,6 +175,30 @@ describe('evaluation results', () => {
     const state = run(many);
     expect(state.tape).toHaveLength(TAPE_LIMIT);
     expect(state.tape[0]?.id).toBe(6);
+  });
+});
+
+describe('recalling a tape result', () => {
+  it('shows the value and lets typing replace it', () => {
+    const recalled = run([...type('7'), { type: 'recall', entry: '15' }]);
+    expect(recalled).toMatchObject({ entry: '15', error: null });
+    expect(run(type('2'), recalled).entry).toBe('2');
+  });
+
+  it('becomes the second operand of a pending operation', () => {
+    const state = run([...type('12'), { type: 'operator', operation: 'add' }, { type: 'recall', entry: '1.5e+20' }]);
+    expect(planEquals(state)).toEqual({ operation: 'add', operands: [12, 1.5e20], continueWith: null });
+    expect(planOperator(state, 'multiply')).toEqual({ operation: 'add', operands: [12, 1.5e20], continueWith: 'multiply' });
+  });
+
+  it('becomes the first operand when nothing is pending', () => {
+    const state = run([{ type: 'recall', entry: '-0.5' }, { type: 'operator', operation: 'multiply' }]);
+    expect(state).toMatchObject({ accumulator: -0.5, pendingOperation: 'multiply' });
+  });
+
+  it('is ignored while a calculation is running', () => {
+    const pending = run([{ type: 'evaluationStarted' }]);
+    expect(run([{ type: 'recall', entry: '3' }], pending)).toBe(pending);
   });
 });
 

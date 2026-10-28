@@ -12,7 +12,7 @@ interface CalculatorProps {
 }
 
 export function Calculator({ api }: CalculatorProps) {
-  const { state, run, pasteEntry, clearTape } = useCalculator(api);
+  const { state, run, pasteEntry, recall, clearTape } = useCalculator(api);
 
   const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
     if (event.ctrlKey || event.metaKey || event.altKey) {
@@ -58,7 +58,7 @@ export function Calculator({ api }: CalculatorProps) {
         />
         <Keypad onCommand={run} />
       </div>
-      <Tape lines={state.tape} onClear={clearTape} />
+      <Tape lines={state.tape} onRecall={recall} onClear={clearTape} />
     </main>
   );
 }

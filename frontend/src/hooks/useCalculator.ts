@@ -88,5 +88,11 @@ export function useCalculator(api: CalculatorApi) {
     dispatch(parsed.ok ? { type: 'entrySet', entry: parsed.entry } : { type: 'inputRejected', message: parsed.message });
   }
 
-  return { state, run, pasteEntry, clearTape: () => dispatch({ type: 'clearTape' }) };
+  return {
+    state,
+    run,
+    pasteEntry,
+    recall: (entry: string) => dispatch({ type: 'recall', entry }),
+    clearTape: () => dispatch({ type: 'clearTape' }),
+  };
 }

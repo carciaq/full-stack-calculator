@@ -3,10 +3,12 @@ import type { TapeLine } from '../domain/calculator';
 
 interface TapeProps {
   lines: TapeLine[];
+  /** Called with a result's text when the person picks it to reuse. */
+  onRecall: (result: string) => void;
   onClear: () => void;
 }
 
-export function Tape({ lines, onClear }: TapeProps) {
+export function Tape({ lines, onRecall, onClear }: TapeProps) {
   const paper = useRef<HTMLDivElement>(null);
 
   // New lines print at the bottom, like an adding machine; keep the latest in view.
@@ -28,16 +30,27 @@ export function Tape({ lines, onClear }: TapeProps) {
       </div>
       <div className="tape__paper" ref={paper} tabIndex={0} aria-label="Calculation history">
         {lines.length === 0 ? (
-          <p className="tape__empty">Each calculation prints here, so you can check your work.</p>
+          <p className="tape__empty">Each calculation prints here. Select a result to use it again.</p>
         ) : (
           <ol className="tape__lines">
             {lines.map(line => (
               <li key={line.id} className={`tape__line tape__line--${line.status}`}>
-                <span className="tape__expression">{line.expression}</span>
                 {line.status === 'ok' ? (
-                  <span className="tape__result">= {line.result}</span>
+                  <button
+                    type="button"
+                    className="tape__entry"
+                    title="Use this result"
+                    aria-label={`Use result: ${line.expression} = ${line.result}`}
+                    onClick={() => onRecall(line.result)}
+                  >
+                    <span className="tape__expression">{line.expression}</span>
+                    <span className="tape__result">= {line.result}</span>
+                  </button>
                 ) : (
-                  <span className="tape__result">{line.message}</span>
+                  <div className="tape__entry">
+                    <span className="tape__expression">{line.expression}</span>
+                    <span className="tape__result">{line.message}</span>
+                  </div>
                 )}
               </li>
             ))}

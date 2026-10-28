@@ -15,6 +15,7 @@ export type ApiErrorCode =
   | 'DIVISION_BY_ZERO'
   | 'NEGATIVE_SQUARE_ROOT'
   | 'RESULT_OUT_OF_RANGE'
+  | 'UNDEFINED_RESULT'
   | 'INVALID_INPUT'
   | 'NETWORK_ERROR'
   | 'INVALID_RESPONSE'
@@ -37,6 +38,7 @@ const MESSAGES: Partial<Record<string, string>> = {
   DIVISION_BY_ZERO: "Can't divide by zero.",
   NEGATIVE_SQUARE_ROOT: "Can't take the square root of a negative number.",
   RESULT_OUT_OF_RANGE: 'The result is too large to calculate.',
+  UNDEFINED_RESULT: "The result isn't a real number.",
   NETWORK_ERROR: "Can't reach the calculator service. Check that it's running, then try again.",
   INVALID_RESPONSE: 'The calculator service sent an unexpected response.',
 };

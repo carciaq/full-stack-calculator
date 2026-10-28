@@ -30,7 +30,7 @@ POST /api/v1/{operation}            operation: add | subtract | multiply | divid
 ```
 
 `percentage` is "a percent of b": `[15, 200]` → `30`. Known error codes (`DIVISION_BY_ZERO`,
-`NEGATIVE_SQUARE_ROOT`, `RESULT_OUT_OF_RANGE`) get friendly copy in the UI; any other code shows the server's message.
+`NEGATIVE_SQUARE_ROOT`, `RESULT_OUT_OF_RANGE`, `UNDEFINED_RESULT`) get friendly copy in the UI; any other code shows the server's message.
 
 ## Structure
 
@@ -58,7 +58,8 @@ src/
   late response is ignored.
 - **Display rounding.** Results are rounded to 12 significant digits, so `0.1 + 0.2` shows `0.3`.
 - **Paper tape.** Every calculation, including failed ones (printed in red), goes on a tape next to the
-  keypad, as on an adding machine.
+  keypad, as on an adding machine. Selecting a result loads it into the display, where it works as an
+  operand like any other result.
 
 ### Keyboard
 

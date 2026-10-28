@@ -14,6 +14,11 @@ export interface CalculatorState {
   pendingOperation: BinaryOperation | null;
   /** When true, the next digit starts a new entry instead of extending the current one. */
   overwrite: boolean;
+  /**
+   * True right after an operator is chosen, while the display still shows the first operand.
+   * Another operator then replaces the pending one instead of evaluating.
+   */
+  awaitingOperand: boolean;
   /** The last completed expression, shown above the result. */
   lastExpression: string | null;
   status: 'idle' | 'pending';
@@ -37,6 +42,7 @@ export type CalculatorAction =
   | { type: 'toggleSign' }
   | { type: 'operator'; operation: BinaryOperation }
   | { type: 'entrySet'; entry: string }
+  | { type: 'recall'; entry: string }
   | { type: 'inputRejected'; message: string }
   | { type: 'clear' }
   | { type: 'clearTape' }
@@ -51,6 +57,7 @@ export const initialState: CalculatorState = {
   accumulator: null,
   pendingOperation: null,
   overwrite: false,
+  awaitingOperand: false,
   lastExpression: null,
   status: 'idle',
   error: null,
@@ -65,6 +72,7 @@ const INPUT_ACTIONS = new Set<CalculatorAction['type']>([
   'toggleSign',
   'operator',
   'entrySet',
+  'recall',
 ]);
 
 export function calculatorReducer(state: CalculatorState, action: CalculatorAction): CalculatorState {
@@ -80,7 +88,7 @@ export function calculatorReducer(state: CalculatorState, action: CalculatorActi
         return { ...state, error: `Numbers can have at most ${MAX_DIGITS} digits.` };
       }
       const entry = base === '0' ? action.digit : base === '-0' ? `-${action.digit}` : base + action.digit;
-      return { ...state, entry, overwrite: false, error: null, lastExpression: null };
+      return { ...state, entry, overwrite: false, awaitingOperand: false, error: null, lastExpression: null };
     }
 
     case 'decimal': {
@@ -88,7 +96,14 @@ export function calculatorReducer(state: CalculatorState, action: CalculatorActi
       if (base.includes('.')) {
         return { ...state, error: null };
       }
-      return { ...state, entry: `${base}.`, overwrite: false, error: null, lastExpression: null };
+      return {
+        ...state,
+        entry: `${base}.`,
+        overwrite: false,
+        awaitingOperand: false,
+        error: null,
+        lastExpression: null,
+      };
     }
 
     case 'backspace': {
@@ -102,12 +117,12 @@ export function calculatorReducer(state: CalculatorState, action: CalculatorActi
 
     case 'toggleSign': {
       const entry = state.entry.startsWith('-') ? state.entry.slice(1) : `-${state.entry}`;
-      return { ...state, entry, error: null };
+      return { ...state, entry, awaitingOperand: false, error: null };
     }
 
     case 'operator': {
       // Pressing a second operator before typing a number just swaps the operator.
-      if (state.pendingOperation && state.overwrite) {
+      if (state.pendingOperation && state.awaitingOperand) {
         return { ...state, pendingOperation: action.operation, error: null };
       }
       return {
@@ -115,13 +130,32 @@ export function calculatorReducer(state: CalculatorState, action: CalculatorActi
         accumulator: Number(state.entry),
         pendingOperation: action.operation,
         overwrite: true,
+        awaitingOperand: true,
         lastExpression: null,
         error: null,
       };
     }
 
     case 'entrySet':
-      return { ...state, entry: action.entry, overwrite: false, error: null, lastExpression: null };
+      return {
+        ...state,
+        entry: action.entry,
+        overwrite: false,
+        awaitingOperand: false,
+        error: null,
+        lastExpression: null,
+      };
+
+    // A value reused from the tape acts like a result: it can be an operand, but typing replaces it.
+    case 'recall':
+      return {
+        ...state,
+        entry: action.entry,
+        overwrite: true,
+        awaitingOperand: false,
+        error: null,
+        lastExpression: null,
+      };
 
     case 'inputRejected':
       return { ...state, error: action.message };
@@ -144,12 +178,13 @@ export function calculatorReducer(state: CalculatorState, action: CalculatorActi
 
       if (isUnary(request.operation)) {
         // A unary result replaces the entry but keeps any calculation in progress, so "9 + √16 =" works.
-        return { ...base, lastExpression: state.pendingOperation ? null : expression };
+        return { ...base, awaitingOperand: false, lastExpression: state.pendingOperation ? null : expression };
       }
       return {
         ...base,
         accumulator: request.continueWith ? result : null,
         pendingOperation: request.continueWith,
+        awaitingOperand: request.continueWith !== null,
         lastExpression: request.continueWith ? null : expression,
       };
     }
@@ -169,7 +204,7 @@ function appendLine(state: CalculatorState, line: TapeLine): Pick<CalculatorStat
 
 /** Pressing an operator evaluates the pending calculation first when a second number was typed. */
 export function planOperator(state: CalculatorState, operation: BinaryOperation): EvaluationRequest | null {
-  if (state.pendingOperation === null || state.accumulator === null || state.overwrite) {
+  if (state.pendingOperation === null || state.accumulator === null || state.awaitingOperand) {
     return null;
   }
   return { operation: state.pendingOperation, operands: [state.accumulator, Number(state.entry)], continueWith: operation };

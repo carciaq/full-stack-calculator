@@ -154,4 +154,27 @@ describe('Calculator', () => {
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
     expect(screen.getByText(/Each calculation prints here/)).toBeInTheDocument();
   });
+
+  it('reuses a result from the tape as the next operand', async () => {
+    const { press, user, api } = setup();
+
+    await press('1', '2', 'Add', '3', 'Equals');
+    await screen.findByRole('list');
+    await press('All clear', '2', 'Multiply');
+    await user.click(screen.getByRole('button', { name: 'Use result: 12 + 3 = 15' }));
+
+    expect(screen.getByLabelText('Result')).toHaveTextContent('15');
+    await press('Equals');
+    await waitFor(() => expect(screen.getByLabelText('Result')).toHaveTextContent('30'));
+    expect(api.calculate).toHaveBeenLastCalledWith('multiply', [2, 15], expect.any(AbortSignal));
+  });
+
+  it('does not offer failed lines for reuse', async () => {
+    const { press } = setup();
+
+    await press('8', 'Divide', '0', 'Equals');
+    await screen.findByRole('list');
+
+    expect(screen.queryByRole('button', { name: /Use result/ })).not.toBeInTheDocument();
+  });
 });
