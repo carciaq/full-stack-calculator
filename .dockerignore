@@ -1,0 +1,8 @@
+.git
+**/node_modules
+**/dist
+**/coverage
+backend/bin
+backend/coverage.*
+**/.env
+**/.DS_Store

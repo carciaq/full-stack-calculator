@@ -14,8 +14,8 @@ func TestLoadConfigDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Addr != ":8080" || cfg.AllowedOrigins != nil {
-		t.Errorf("cfg = %+v, want :8080 and no origins", cfg)
+	if cfg.Addr != ":8080" || cfg.AllowedOrigins != nil || cfg.StaticDir != "" {
+		t.Errorf("cfg = %+v, want :8080, no origins and no static dir", cfg)
 	}
 }
 
@@ -23,6 +23,7 @@ func TestLoadConfigFromEnv(t *testing.T) {
 	cfg, err := loadConfig(env(map[string]string{
 		"PORT":            "9000",
 		"ALLOWED_ORIGINS": " http://localhost:5173, ,https://calc.example ",
+		"STATIC_DIR":      "/srv/www",
 	}))
 	if err != nil {
 		t.Fatal(err)
@@ -32,6 +33,9 @@ func TestLoadConfigFromEnv(t *testing.T) {
 	}
 	if want := []string{"http://localhost:5173", "https://calc.example"}; !slices.Equal(cfg.AllowedOrigins, want) {
 		t.Errorf("AllowedOrigins = %v, want %v", cfg.AllowedOrigins, want)
+	}
+	if cfg.StaticDir != "/srv/www" {
+		t.Errorf("StaticDir = %q, want /srv/www", cfg.StaticDir)
 	}
 }
 
