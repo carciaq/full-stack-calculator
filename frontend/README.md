@@ -26,7 +26,7 @@ POST /api/v1/{operation}            operation: add | subtract | multiply | divid
      { "operands": [12, 3] }        sqrt takes one operand, the rest take two
 
 200  { "operation": "add", "operands": [12, 3], "result": 15 }
-4xx  { "error": { "code": "DIVISION_BY_ZERO", "message": "division by zero is undefined" } }
+4xx  { "error": { "code": "DIVISION_BY_ZERO", "message": "Division by zero is undefined." } }
 ```
 
 `percentage` is "a percent of b": `[15, 200]` → `30`. Known error codes (`DIVISION_BY_ZERO`,
