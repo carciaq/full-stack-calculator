@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -35,7 +36,7 @@ func main() {
 func run(ctx context.Context, cfg config, logger *slog.Logger) error {
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           httpapi.NewHandler(logger, cfg.AllowedOrigins),
+		Handler:           withStatic(httpapi.NewHandler(logger, cfg.AllowedOrigins), cfg.StaticDir),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
@@ -44,7 +45,7 @@ func run(ctx context.Context, cfg config, logger *slog.Logger) error {
 
 	errs := make(chan error, 1)
 	go func() {
-		logger.Info("listening", "addr", cfg.Addr, "allowed_origins", cfg.AllowedOrigins)
+		logger.Info("listening", "addr", cfg.Addr, "allowed_origins", cfg.AllowedOrigins, "static_dir", cfg.StaticDir)
 		errs <- srv.ListenAndServe()
 	}()
 
@@ -58,4 +59,20 @@ func run(ctx context.Context, cfg config, logger *slog.Logger) error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	return srv.Shutdown(shutdownCtx)
+}
+
+// withStatic serves the frontend build from dir and sends /api/ and /healthz to api,
+// so one process can serve the whole app from a single origin. An empty dir serves the API only.
+func withStatic(api http.Handler, dir string) http.Handler {
+	if dir == "" {
+		return api
+	}
+	files := http.FileServer(http.Dir(dir))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/healthz" {
+			api.ServeHTTP(w, r)
+			return
+		}
+		files.ServeHTTP(w, r)
+	})
 }

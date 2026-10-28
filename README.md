@@ -20,6 +20,7 @@ works like a desk calculator with a paper tape.
 ## Contents
 
 - [Repository layout](#repository-layout)
+- [Quick start with Docker](#quick-start-with-docker)
 - [Setup](#setup)
 - [Configuration](#configuration)
 - [API reference](#api-reference)
@@ -40,11 +41,38 @@ frontend/
   src/api/               HTTP client that turns every failure into a typed ApiError
   src/hooks/             useCalculator: connects the state machine to the API
   src/components/        Calculator, Display, Keypad, Tape
+Dockerfile               builds both halves into one image
+Makefile                 test, coverage and Docker shortcuts
 ```
 
 The frontend has its own [README](frontend/README.md) with more detail on its internals.
 
+## Quick start with Docker
+
+The only requirement is Docker. One image runs the whole app:
+
+```bash
+docker build -t full-stack-calculator .
+docker run --rm -p 8080:8080 full-stack-calculator
+```
+
+Open <http://localhost:8080>. The same port serves the calculator and the API
+(`curl localhost:8080/healthz`). `make docker-build` and `make docker-run` do the same.
+
+The [Dockerfile](Dockerfile) is a multi-stage build:
+
+1. **`node:22-alpine`** installs the frontend's locked dependencies and runs `pnpm build`.
+2. **`golang:1.24-alpine`** compiles the backend into a static binary.
+3. **`distroless/static:nonroot`** gets only the binary and the built frontend, and runs as a
+   non-root user. The final image is about 15 MB and contains no shell or package manager.
+
+In the container, `STATIC_DIR=/www` makes the Go server serve the frontend files for every path
+outside `/api/` and `/healthz`. Any backend variable from [Configuration](#configuration) can be
+overridden with `-e`, for example `docker run -p 9000:9000 -e PORT=9000 full-stack-calculator`.
+
 ## Setup
+
+To run the two halves separately for development:
 
 ### Prerequisites
 
@@ -95,7 +123,9 @@ cd frontend && pnpm build    # type-checks, then writes static files to frontend
 cd backend  && go build -o bin/server ./cmd/server
 ```
 
-Serve `frontend/dist/` with any static file server and route `/api/` to the Go server (for example
+The simplest deployment is the [Docker image](#quick-start-with-docker), or the equivalent by hand:
+`STATIC_DIR=../frontend/dist ./bin/server` serves the app and the API on port 8080. You can also
+serve `frontend/dist/` with any static file server and route `/api/` to the Go server (for example
 with an nginx `location /api/ { proxy_pass http://backend:8080; }`). If the frontend and API must
 live on different origins, build the frontend with `VITE_API_BASE_URL` pointing at the API and
 allow the frontend's origin on the backend with `ALLOWED_ORIGINS` (see below).
@@ -108,6 +138,7 @@ allow the frontend's origin on the backend with `ALLOWED_ORIGINS` (see below).
 | ----------------- | ------- | --------------------------------------------------------------------------------------------------- |
 | `PORT`            | `8080`  | Port to listen on (1–65535). The server refuses to start on an invalid value.                       |
 | `ALLOWED_ORIGINS` | *none*  | Comma-separated browser origins allowed to call the API cross-origin, or `*` for any origin.         |
+| `STATIC_DIR`      | *none*  | Directory of built frontend files to serve on every path outside `/api/` and `/healthz`. Unset: API only. |
 
 ```bash
 PORT=9000 ALLOWED_ORIGINS=http://localhost:5173,https://calc.example go run ./cmd/server
@@ -287,11 +318,30 @@ try {
 
 ## Testing
 
+From the repository root:
+
+```bash
+make test         # all backend and frontend unit tests
+make coverage     # tests plus coverage reports for both halves
+```
+
+`make coverage` prints a summary and writes HTML reports to `backend/coverage.html` and
+`frontend/coverage/index.html` (the frontend also writes `frontend/coverage/lcov.info` for CI tools).
+Current coverage:
+
+| Part     | Statements | Notes                                                        |
+| -------- | ---------- | ------------------------------------------------------------ |
+| Backend  | 92.8%      | `calculator` 100%, `httpapi` 98.9%; `main()` itself is untested |
+| Frontend | 96.9%      | 104 tests; 92.3% of branches                                  |
+
+Or run each half's tools directly:
+
 ```bash
 # backend
 cd backend
 go test ./...
-go test -race -coverprofile=coverage.out ./... && go tool cover -html=coverage.out -o coverage.html
+go test -race ./...
+go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out -o coverage.html
 
 # frontend
 cd frontend
@@ -302,7 +352,7 @@ pnpm typecheck    # tsc
 ```
 
 Backend tests cover the arithmetic and its edge cases, the HTTP contract (status codes, error codes,
-input validation), middleware, configuration parsing and graceful shutdown. Frontend tests cover the
+input validation), middleware, configuration parsing, static file routing and graceful shutdown. Frontend tests cover the
 state machine, number parsing and formatting, the API client, and the full component with a fake API.
 
 ## Design rationale and decisions
@@ -369,8 +419,16 @@ third-party dependencies to audit or update.
 middleware turns a panic into a JSON `500` instead of a dropped connection; shutdown drains in-flight
 requests on `SIGTERM`; configuration is validated at startup so a bad `PORT` fails immediately.
 
-**CORS is off by default.** In development the Vite proxy, and in production a reverse proxy, put
-the frontend and API on the same origin, so no CORS is needed. When it is, origins are allowed
+**One container, one process, one origin.** The Docker image runs only the Go server, which serves
+the built frontend next to the API. Running nginx and Go in one container would need a process
+supervisor; two containers would need Compose just to start a calculator. Serving static files is a
+few lines of standard library, it keeps the image at ~15 MB, and the browser sees a single origin.
+The routing is explicit (`/api/` and `/healthz` go to the API, everything else to the files), so
+API errors such as `405` for a wrong method are unchanged, and without `STATIC_DIR` the server is
+API-only, exactly as before.
+
+**CORS is off by default.** In development the Vite proxy, and in production the Go server or a
+reverse proxy, put the frontend and API on the same origin, so no CORS is needed. When it is, origins are allowed
 explicitly with `ALLOWED_ORIGINS`; the server echoes the specific origin and sets `Vary: Origin` so
 caches don't mix responses between origins.
 

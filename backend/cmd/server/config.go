@@ -9,12 +9,14 @@ import (
 type config struct {
 	Addr           string
 	AllowedOrigins []string
+	StaticDir      string
 }
 
 // loadConfig reads settings from the environment:
 //
 //	PORT             port to listen on (default 8080)
 //	ALLOWED_ORIGINS  comma-separated browser origins allowed by CORS, or "*" (default none)
+//	STATIC_DIR       directory of frontend files to serve next to the API (default none)
 func loadConfig(getenv func(string) string) (config, error) {
 	port := getenv("PORT")
 	if port == "" {
@@ -31,5 +33,5 @@ func loadConfig(getenv func(string) string) (config, error) {
 		}
 	}
 
-	return config{Addr: ":" + port, AllowedOrigins: origins}, nil
+	return config{Addr: ":" + port, AllowedOrigins: origins, StaticDir: getenv("STATIC_DIR")}, nil
 }
